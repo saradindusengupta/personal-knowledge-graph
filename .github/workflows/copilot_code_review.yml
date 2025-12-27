@@ -1,0 +1,39 @@
+name: PR Code Review 
+# This GitHub Actions workflow is designed to automate code quality checks and provide AI-powered code review suggestions for pull requests targeting the main branch. 
+# 
+# Key Features:
+# - **Trigger Events:** Runs automatically on pull requests to the main branch and can also be triggered manually via the `workflow_dispatch` event.
+# - **Environment:** Executes on the latest Ubuntu runner.
+# - **Secrets Required:**
+#   - `APIKEY`: Used for authenticating with the Copilot PR Review action.
+#   - `ENDPOINT`: Specifies the endpoint for the Copilot PR Review action.
+#   - `GITHUB_TOKEN`: Standard GitHub token for workflow authentication.
+# - **Jobs Overview:**
+#   1. **run-linters:** Checks out the repository, sets up Python, installs code quality tools (`black` and `flake8`), and runs linting using the `wearerequired/lint-action` to ensure code quality.
+#   2. **Copilot PR Review:** Uses the Copilot PR Review action to provide AI-generated code suggestions and a summary for the pull request.
+#   - **Permissions:** Grants write access to pull requests, allowing the action to comment on the PR with suggestions.
+on:
+  # Trigger the workflow on push or pull request,
+  # but only for the main branch
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  copilot-review:
+    name: Copilot PR Review
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    steps:
+      - name: Copilot PR Review
+        uses: AllyW/copilot-pr-review@v0.1.34
+        with:
+          APIKEY: ${{ secrets.APIKEY }}
+          ENDPOINT: ${{ secrets.ENDPOINT }}
+          AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR_EVENT: ${{ toJSON(github.event) }}
+          code_suggest: True
+          pr_summary: True
+          pr_reset: True

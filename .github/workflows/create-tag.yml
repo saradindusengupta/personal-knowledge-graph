@@ -1,0 +1,59 @@
+name: Create and Push Tag
+
+on:
+  workflow_dispatch:
+    inputs:
+      tag_message: 
+        description: 'Optional message for the tag (annotated tag)'
+        required: false
+
+jobs:
+  create_tag:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Required to push tags
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # Required to fetch all tags
+
+      - name: Configure Git
+        run: |
+          git config user.name "${{ github.actor }}"
+          git config user.email "${{ github.actor_id }}+${{ github.actor }}@users.noreply.github.com"
+
+      - name: Determine and Create Tag
+        id: determine_tag # Added an id to potentially use the tag name in later steps
+        run: |
+          LATEST_SEMVER_TAG=$(git tag --sort=-v:refname | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | head -n 1)
+          
+          if [ -z "$LATEST_SEMVER_TAG" ]; then
+            NEW_TAG="v0.0.1"
+          else
+            # Remove 'v' prefix
+            VERSION_STRING=${LATEST_SEMVER_TAG#v}
+            # Split into major, minor, patch
+            MAJOR=$(echo $VERSION_STRING | cut -d. -f1)
+            MINOR=$(echo $VERSION_STRING | cut -d. -f2)
+            PATCH=$(echo $VERSION_STRING | cut -d. -f3)
+            
+            # Increment patch version
+            NEW_PATCH=$((PATCH + 1))
+            NEW_TAG="v${MAJOR}.${MINOR}.${NEW_PATCH}"
+          fi
+          
+          echo "Determined new tag: $NEW_TAG"
+          echo "::set-output name=new_tag::$NEW_TAG" # Output the new tag name
+
+          TAG_MESSAGE="${{ github.event.inputs.tag_message }}"
+          
+          echo "Creating tag $NEW_TAG"
+          if [ -z "$TAG_MESSAGE" ]; then
+            git tag "$NEW_TAG"
+          else
+            git tag -a "$NEW_TAG" -m "$TAG_MESSAGE"
+          fi
+          git push origin "$NEW_TAG"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

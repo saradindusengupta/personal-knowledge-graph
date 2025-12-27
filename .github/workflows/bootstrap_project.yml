@@ -1,0 +1,93 @@
+name: Bootstrap Project
+# This workflow automates the process described in the selected code.
+# It defines the events that trigger the workflow, such as pushes or pull requests,
+# and specifies the jobs and steps to be executed in response.
+# The workflow may include actions like checking out code, setting up environments,
+# running tests, building artifacts, or deploying applications.
+# Each job runs in a fresh virtual environment and can be configured with specific runners,
+# environment variables, and dependencies.
+# Customize this workflow to fit your project's CI/CD requirements.
+on:
+  workflow_dispatch:
+    inputs:
+      new_name:
+        description: 'New name for the project directory'
+        required: true
+        type: string
+
+jobs:
+  rename_directory:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3
+
+      - name: Rename directory
+        run: |
+          echo "Old directory name: project_name"
+          echo "New directory name: ${{ github.event.inputs.new_name }}"
+          if [ -d "src/project_name" ]; then
+            mv src/project_name src/${{ github.event.inputs.new_name }}
+            echo "Directory src/project_name renamed to src/${{ github.event.inputs.new_name }}"
+          else
+            echo "Error: Directory src/project_name not found."
+            exit 1
+          fi
+      
+      - name: Commit and push directory rename
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add src/
+          git commit -m "Bootstrap: Rename project directory to ${{ github.event.inputs.new_name }}"
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update_readme:
+    runs-on: ubuntu-latest
+    needs: rename_directory # Ensures it runs after rename is pushed
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3 # Checks out the repo with the renamed directory
+
+      - name: Update README title
+        run: |
+          # Replace the first line of README.md with the new project name as H1 title
+          sed -i "1s/.*/# ${{ github.event.inputs.new_name }}/" README.md
+          echo "README.md title updated to # ${{ github.event.inputs.new_name }}"
+
+      - name: Commit and push README changes
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add README.md
+          git commit -m "Bootstrap: Update README title to ${{ github.event.inputs.new_name }}"
+          git pull --rebase
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  add_codeowners:
+    runs-on: ubuntu-latest
+    needs: rename_directory # Can run after rename, in parallel with update_readme
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v3 # Checks out the repo with the renamed directory
+
+      - name: Create CODEOWNERS file
+        run: |
+          mkdir -p .github
+          echo '* @saradindusengupta' > .github/CODEOWNERS
+          echo ".github/CODEOWNERS file created"
+
+      - name: Commit and push CODEOWNERS file
+        run: |
+          git config --global user.name 'github-actions[bot]'
+          git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+          git add .github/CODEOWNERS
+          git commit -m "Bootstrap: Add CODEOWNERS file"
+          git pull --rebase
+          git push
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
