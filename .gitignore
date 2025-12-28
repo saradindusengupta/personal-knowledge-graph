@@ -131,3 +131,20 @@ dmypy.json
 # templates
 .github/templates/*
 .vscode/settings.json
+
+# Environment variable files
+.env.local
+.env.*.local
+.env.*
+.envrc
+.env.test.local
+.env.production.local
+.env.development.local
+
+# Data
+data/
+neo4j_data/
+neo4j_logs/
+neo4j_import/
+neo4j_metrics/
+neo4j_plugins/
